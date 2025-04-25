@@ -101,6 +101,7 @@ const PeopleManagement: React.FC = () => {
   const [sedeFilter, setSedeFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [contratoFilter, setContratoFilter] = useState<string>('all');
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
@@ -530,6 +531,9 @@ const PeopleManagement: React.FC = () => {
     if (sedeFilter !== 'all' && p.sede !== sedeFilter) {
       return false;
     }
+    if (contratoFilter !== 'all' && p.tipocontrato !== contratoFilter) {
+      return false;
+    }
 
     return true;
   });
@@ -607,7 +611,7 @@ const PeopleManagement: React.FC = () => {
 
           {/* Filtros */}
           <div className="p-4 border-b border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
                 <select
@@ -682,7 +686,21 @@ const PeopleManagement: React.FC = () => {
                   <option value="SAN LUIS MEDIC SAC">SAN LUIS MEDIC SAC</option>
                 </select>
               </div>
-              
+              <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Contrato</label>
+  <select
+    value={contratoFilter}
+    onChange={(e) => {
+      setContratoFilter(e.target.value);
+      setCurrentPage(1);
+    }}
+    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+  >
+    <option value="all">Todos</option>
+    <option value="planilla">Planilla</option>
+    <option value="recibos">Recibos por Honorarios</option>
+  </select>
+</div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Campo a buscar</label>
                 <select
