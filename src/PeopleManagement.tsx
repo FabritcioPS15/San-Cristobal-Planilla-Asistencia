@@ -39,22 +39,37 @@ const parseDate = (dateStr: any): string | null => {
   if (!dateStr || dateStr.toString().trim() === "") return null;
 
   try {
+    // Caso 1: Número serial de Excel (días desde 1/1/1900)
     if (typeof dateStr === 'number') {
       return format(new Date((dateStr - 25569) * 86400 * 1000), 'yyyy-MM-dd');
     }
 
+    // Caso 2: String con formato DD/MM/AAAA
     if (typeof dateStr === 'string' && dateStr.includes('/')) {
       const [day, month, year] = dateStr.split('/');
-      return format(new Date(`${month}/${day}/${year}`), 'yyyy-MM-dd');
+      return format(new Date(`${year}-${month}-${day}`), 'yyyy-MM-dd');
     }
 
+    // Caso 3: String con formato AAAA-MM-DD (ISO)
     if (typeof dateStr === 'string' && dateStr.includes('-')) {
-      return dateStr;
+      // Verifica si ya está en el formato correcto
+      const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (isoRegex.test(dateStr)) return dateStr;
     }
 
-    return format(new Date(dateStr), 'yyyy-MM-dd');
+    // Caso 4: Fecha en formato de texto (ej. "31-Dic-2023")
+    if (typeof dateStr === 'string') {
+      const parsedDate = new Date(dateStr);
+      if (!isNaN(parsedDate.getTime())) {
+        return format(parsedDate, 'yyyy-MM-dd');
+      }
+    }
+
+    // Si no coincide con ningún formato, retorna null o la fecha actual (según prefieras)
+    console.warn(`Formato de fecha no reconocido: ${dateStr}`);
+    return null;
   } catch (error) {
-    console.warn(`No se pudo parsear la fecha: ${dateStr}`);
+    console.error(`Error al parsear fecha: ${dateStr}`, error);
     return null;
   }
 };

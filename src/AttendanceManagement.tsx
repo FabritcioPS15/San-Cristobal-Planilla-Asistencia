@@ -886,8 +886,17 @@ const AttendanceManagement: React.FC = () => {
   
     // Colores
     const puntualColor = { argb: '00B050' };   // Verde
-    const tardanzaColor = { argb: 'FFA500' };  // Rojo
-    const faltasColor = { argb: 'FF0000' };    // Naranja
+    const tardanzaColor = { argb: 'FFA500' };  // Naranja
+    const faltasColor = { argb: 'FF0000' };    // Rojo
+    
+    // Colores para encabezados
+    const headerColors = {
+        infoPersonal: { argb: '4F81BD' },      // Azul oscuro (información personal)
+        sueldos: { argb: '9BBB59' },           // Verde (datos económicos)
+        asistencias: { argb: 'C0504D' },       // Rojo oscuro (asistencias)
+        resultados: { argb: '8064A2' },        // Morado (resultados)
+        otros: { argb: 'F79646' }              // Naranja (otros)
+    };
   
     const workbook = new ExcelJS.Workbook();
     const ws = workbook.addWorksheet('Planilla de Asistencias');
@@ -897,7 +906,7 @@ const AttendanceManagement: React.FC = () => {
     ws.getCell('A1').value = 'PLANILLA DE ASISTENCIAS';
     ws.getCell('A1').font = { bold: true, size: 16, color: { argb: '1F497D' } };
     ws.getCell('A1').alignment = { horizontal: 'center' };
-    ws.getColumn(10).numFmt = 'dd/mm/yyyy'; // Aplica formato de fecha a la columna 10
+    ws.getColumn(10).numFmt = 'dd/mm/yyyy'; // Aplica formato de fecha a la columna J (10)
   
     // — Información previa —
     ws.addRow(['Fuente:', archivosOrigen.join(', ')]);
@@ -905,52 +914,87 @@ const AttendanceManagement: React.FC = () => {
     ws.addRow(['Descuento Tardanza:', `S/${descuentoTardanza.toFixed(2)}`]);
     ws.addRow([]);
   
-    // — Encabezados —
+    // — Encabezados con categorías de colores —
     const headers = [
-      'Código', 'Empleado', 'DNI', 'Cargo', 'Sede', 'Planilla', 'Pensión',
-      'Sueldo Mensual', 'Sueldo Diario',
-      ...Array.from({ length: diasDelMes }, (_, i) => `D${i + 1}`),
-      'Puntual', 'Tardanza', 'Faltas', 'Descuentos', 'Bono Extra', 'Sueldo Final', 'Reporte', 'Archivo'
+        { text: 'Código', color: headerColors.infoPersonal },
+        { text: 'Empleado', color: headerColors.infoPersonal },
+        { text: 'DNI', color: headerColors.infoPersonal },
+        { text: 'Cargo', color: headerColors.infoPersonal },
+        { text: 'Sede', color: headerColors.infoPersonal },
+        { text: 'Planilla', color: headerColors.infoPersonal },
+        { text: 'Pensión', color: headerColors.infoPersonal },
+        { text: 'Sueldo Mensual', color: headerColors.sueldos },
+        { text: 'Sueldo Diario', color: headerColors.sueldos },
+        { text: 'Inicio Labores', color: headerColors.infoPersonal }, // Nueva columna
+        ...Array.from({ length: diasDelMes }, (_, i) => ({ 
+            text: `D${i + 1}`, 
+            color: headerColors.asistencias 
+        })),
+        { text: 'Puntual', color: headerColors.resultados },
+        { text: 'Tardanza', color: headerColors.resultados },
+        { text: 'Faltas', color: headerColors.resultados },
+        { text: 'Descuentos', color: headerColors.sueldos },
+        { text: 'Bono Extra', color: headerColors.sueldos },
+        { text: 'Sueldo Final', color: headerColors.sueldos },
+        { text: 'Reporte', color: headerColors.otros },
+        { text: 'Archivo', color: headerColors.otros }
     ];
-    const headerRow = ws.addRow(headers);
-    headerRow.eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4F81BD' } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    
+    // Agregar fila de encabezados
+    const headerRow = ws.addRow(headers.map(h => h.text));
+    headerRow.eachCell((cell, colNumber) => {
+        const headerInfo = headers[colNumber - 1]; // Las columnas son 1-based
+        cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: headerInfo.color };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
   
     // — Filas de datos —
     empleadosFiltrados.forEach(emp => {
-      // Construir array de valores primitivos (strings o numbers)
       const data = [
-        emp.Codigo,
-        emp.Nombre,
-        emp.Dni,
-        emp.Cargo,
-        emp.Sede,
-        emp.TipoContrato === 'planilla' ? 'Planilla' : 'Honorarios',
-        emp.Pension || 'N/A',
-        Number(emp.SueldoMensual.toFixed(2)),
-        Number(emp.SueldoDiario.toFixed(2)),
-        emp.FechaInicio || 'N/A', // Incluye FechaInicio en la exportación
-        ...Array.from({ length: diasDelMes }, (_, i) => emp.Dias?.[`Dia${i + 1}`] || 'NL'),
-        emp.Puntuales,
-        emp.Tardanzas,
-        emp.Faltas,
-        Number(emp.Descuentos.toFixed(2)),
-        Number(emp.BonoExtra.toFixed(2)),
-        Number(emp.SueldoFinal.toFixed(2)),
-        emp.NombreReporte,
-        emp.ArchivoOrigen
+          emp.Codigo,
+          emp.Nombre,
+          emp.Dni,
+          emp.Cargo,
+          emp.Sede,
+          emp.TipoContrato === 'planilla' ? 'Planilla' : 'Honorarios',
+          emp.Pension || 'N/A',
+          Number(emp.SueldoMensual.toFixed(2)), // Sueldo Mensual (se formateará después)
+          Number(emp.SueldoDiario.toFixed(2)),  // Sueldo Diario (se formateará después)
+          emp.FechaInicio || 'N/A',
+          ...Array.from({ length: diasDelMes }, (_, i) => emp.Dias?.[`Dia${i + 1}`] || 'NL'),
+          emp.Puntuales,
+          emp.Tardanzas,
+          emp.Faltas,
+          Number(emp.Descuentos.toFixed(2)),     // Descuentos (se formateará después)
+          Number(emp.BonoExtra.toFixed(2)),     // Bono Extra (se formateará después)
+          Number(emp.SueldoFinal.toFixed(2)),   // Sueldo Final (se formateará después)
+          emp.NombreReporte,
+          emp.ArchivoOrigen
       ];
   
       const row = ws.addRow(data);
-  
+      
+      
+      // Aplicar formato monetario a las columnas económicas
+      const formatMonetario = (colNumber) => {
+          const cell = row.getCell(colNumber);
+          cell.numFmt = '"S/"#,##0.00';
+          cell.alignment = { horizontal: 'right' };
+      };
+      
+      // Columnas a formatear (H, I, N, O, P) - 1-based
+      formatMonetario(8);  // Sueldo Mensual (columna H)
+      formatMonetario(9);  // Sueldo Diario (columna I)
+      formatMonetario(14); // Descuentos (columna N)
+      formatMonetario(15); // Bono Extra (columna O)
+      formatMonetario(16); // Sueldo Final (columna P)
+
       // Índices de las columnas Puntual/Tardanza/Faltas (1-based)
-      const base = 9 + diasDelMes;            // última columna de día
-      const idxP = base + 1;                  // Puntual
-      const idxT = base + 2;                  // Tardanza
-      const idxF = base + 3;                  // Faltas
+      const base = 10 + diasDelMes;
+      const idxP = base + 1;
+      const idxT = base + 2;
+      const idxF = base + 3;
   
       // Aplicar color y alineación
       row.getCell(idxP).font = { color: puntualColor };
@@ -961,24 +1005,39 @@ const AttendanceManagement: React.FC = () => {
   
       row.getCell(idxF).font = { color: faltasColor };
       row.getCell(idxF).alignment = { horizontal: 'center' };
-    });
+  });
   
     // — Pie de página —
     ws.addRow([]);
     const footerRow = ws.addRow([`Exportado: ${new Date().toLocaleString()}`]);
     footerRow.eachCell(cell => {
-      cell.font = { italic: true, color: { argb: '7F7F7F' } };
+        cell.font = { italic: true, color: { argb: '7F7F7F' } };
     });
   
-    // — Columnas —
+    // — Ajuste de columnas —
     ws.columns = [
-      { width: 8 }, { width: 25 }, { width: 10 }, { width: 20 }, { width: 10 },
-      { width: 12 }, { width: 10 }, { width: 15 }, { width: 15 },
-      ...Array(diasDelMes).fill({ width: 4 }),
-      { width: 8 }, { width: 8 }, { width: 8 }, { width: 12 }, { width: 12 }, { width: 12 },
-      { width: 15 }, { width: 30 }
+        { width: 8 },    // Código
+        { width: 25 },   // Empleado
+        { width: 10 },   // DNI
+        { width: 20 },   // Cargo
+        { width: 10 },   // Sede
+        { width: 12 },   // Planilla
+        { width: 10 },   // Pensión
+        { width: 15 },   // Sueldo Mensual
+        { width: 15 },   // Sueldo Diario
+        { width: 12 },   // Inicio Labores (nueva columna)
+        ...Array(diasDelMes).fill({ width: 4 }), // Días del mes
+        { width: 8 },    // Puntual
+        { width: 8 },    // Tardanza
+        { width: 8 },    // Faltas
+        { width: 12 },  // Descuentos
+        { width: 12 },  // Bono Extra
+        { width: 12 },  // Sueldo Final
+        { width: 15 },  // Reporte
+        { width: 30 }   // Archivo
     ];
   
+    // Resto del código para la hoja de resumen...
     const wsSum = workbook.addWorksheet('Resumen de Pagos');
 
     // Encabezado principal
@@ -1027,20 +1086,21 @@ const AttendanceManagement: React.FC = () => {
         emp.NumeroCuenta || '',
         'Falta'  // Mostrar siempre "Falta" en esta columna
       ]);
+      
     });
   
     // Ajustar anchos de columnas
     wsSum.columns = [
-      { width: 25 },  // Nombres
+      { width: 30 },  // Nombres
       { width: 20 },  // Código Empresa-Sede
       { width: 20 },  // Cargo
       { width: 15 },  // Inicio Labores
       { width: 15 },  // Sueldo Fijo
-      { width: 18 },  // Bono Fijo
+      { width: 20 },  // Bono Fijo
       { width: 18 },  // Faltas
-      { width: 18 },  // Tardanzas
-      { width: 18 },  // Desc. Planilla
-      { width: 15 },  // Neto
+      { width: 22 },  // Tardanzas
+      { width: 22 },  // Desc. Planilla
+      { width: 18 },  // Neto
       { width: 15 },  // Banco
       { width: 15 },  // N° Cuenta
       { width: 12 }   // Condición
@@ -1056,7 +1116,7 @@ const AttendanceManagement: React.FC = () => {
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       saveAs(blob, `Resumen_Pagos_${new Date().toISOString().split('T')[0]}.xlsx`);
     });
-  };
+};
   
   // Función auxiliar para calcular descuentos de planilla
   const calcularDescuentoPlanilla = (emp: Empleado) => {
