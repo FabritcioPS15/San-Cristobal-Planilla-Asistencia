@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FileUp, FileDown, X, Search, ClipboardCheck , ArrowRight, Calendar,  Clock, AlertCircle, Filter, Plus, Minus, BarChart2,  Users } from 'lucide-react';
+import { Pencil, FileUp, FileDown, X, Search, ClipboardCheck, ArrowRight, Calendar, Clock, AlertCircle, Filter, Plus, Minus, BarChart2, Users } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { createClient } from '@supabase/supabase-js';
@@ -21,6 +21,7 @@ interface RubroSummary {
   totalFinal: number;
   color: string;
 }
+
 interface BancoSummary {
   nombre: string;
   cantidadEmpleados: number;
@@ -39,7 +40,7 @@ interface Empleado {
   SueldoMensual: number;
   SueldoDiario: number;
   Dias: Record<string, string>;
-  FechaInicio: string; // Para 'Inicio de Labores'
+  FechaInicio: string;
   NumeroCuenta: string;
   BonoFeriado: number;
   Puntuales: number;
@@ -60,6 +61,7 @@ interface Empleado {
   Banco: string;
   FaltasJustificadas?: number;
 }
+
 const obtenerIniciales = (empresa: string) => {
   if (!empresa) return '';
   return empresa
@@ -68,15 +70,15 @@ const obtenerIniciales = (empresa: string) => {
     .join('')
     .toUpperCase();
 };
+
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FF6B6B', '#4ECDC4', '#45B7D1', '#A05195'];
 
 const AttendanceManagement: React.FC = () => {
-  // Estados
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [diasDelMes, setDiasDelMes] = useState<number>(28);
   const [descuentoTardanza, setDescuentoTardanza] = useState<number>(5);
   const [archivosCargados, setArchivosCargados] = useState<string[]>([]);
-  // Removed unused state variable 'archivosExcel'
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterReporte, setFilterReporte] = useState<string>('TODOS');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -88,8 +90,8 @@ const AttendanceManagement: React.FC = () => {
   const [sedes] = useState<string[]>(['Lima']);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isValidating, setIsValidating] = useState<boolean>(false);
+
   useEffect(() => {
-    // Cargar datos guardados al iniciar
     const savedData = localStorage.getItem('attendanceManagementData');
     if (savedData) {
       const {
@@ -110,7 +112,6 @@ const AttendanceManagement: React.FC = () => {
     }
   }, []);
 
-  // Guardar datos cuando cambien
   useEffect(() => {
     const dataToSave = {
       empleados,
@@ -126,8 +127,6 @@ const AttendanceManagement: React.FC = () => {
     localStorage.setItem('attendanceManagementData', JSON.stringify(dataToSave));
   }, [empleados, archivosCargados, diasDelMes, descuentoTardanza, defaultTipoPlanilla, defaultPension, defaultSede]);
 
-
-  // Funciones
   const extraerNombreReporte = (nombreArchivo: string): string => {
     const prefix = "ReportePlanillaResumen_";
     if (nombreArchivo.startsWith(prefix)) {
@@ -140,7 +139,6 @@ const AttendanceManagement: React.FC = () => {
     setCurrentPage(1);
   }, [searchTerm, filterReporte]);
 
-  // Memoized values
   const reportesDisponibles = useMemo(() => {
     const reportes = Array.from(new Set(empleados.map(e => e.NombreReporte)));
     return ['TODOS', ...reportes];
@@ -148,28 +146,28 @@ const AttendanceManagement: React.FC = () => {
 
   const validateEmployee = async (dni: string, nombre: string) => {
     try {
-      
       const { data: dniData, error: dniError } = await supabase
-      .from('people')
-      .select('dni, nombre, ocupacion, salario, sede, empresa, rubro, activo, banco, tipocontrato, pension, fechaingreso, numerocuenta') // <- Campos agregados
-      .eq('dni', dni)
-      .eq('activo', true)
-      .single();
+        .from('people')
+        .select('dni, nombre, ocupacion, salario, sede, empresa, rubro, activo, banco, tipocontrato, pension, fechaingreso, numerocuenta')
+        .eq('dni', dni)
+        .eq('activo', true)
+        .single();
+
       if (!dniError && dniData) {
         return { isValid: true, data: dniData };
       }
-  
+
       const { data: nameData, error: nameError } = await supabase
         .from('people')
         .select('dni, nombre, ocupacion, salario, sede, empresa, rubro, activo, banco')
         .textSearch('nombre', nombre.split(' ').join(' & '))
         .eq('activo', true)
         .single();
-  
+
       if (!nameError && nameData) {
         return { isValid: true, data: nameData };
       }
-  
+
       return { 
         isValid: false, 
         error: 'Empleado no registrado' 
@@ -178,7 +176,6 @@ const AttendanceManagement: React.FC = () => {
       console.error('Error al validar empleado:', error);
       return { isValid: false, error: 'Error al conectar con la base de datos' };
     }
-    
   };
 
   const calcularSueldoFinal = (emp: Empleado) => {
@@ -187,15 +184,15 @@ const AttendanceManagement: React.FC = () => {
     let descuentoPension = 0;
     if (emp.TipoContrato === 'planilla') {
       if (emp.Pension === 'AFP Profuturo') {
-        descuentoPension = emp.SueldoMensual * 0.0169; // 1.69%
+        descuentoPension = emp.SueldoMensual * 0.1137;
       } else if (emp.Pension === 'AFP Prima') {
-        descuentoPension = emp.SueldoMensual * 0.0160; // 1.60%
+        descuentoPension = emp.SueldoMensual * 0.1137;
       } else if (emp.Pension === 'AFP Habitat') {
-        descuentoPension = emp.SueldoMensual * 0.0147; // 1.47%
+        descuentoPension = emp.SueldoMensual * 0.1137;
       } else if (emp.Pension === 'AFP Integra') {
-        descuentoPension = emp.SueldoMensual * 0.0155; // 1.55%
+        descuentoPension = emp.SueldoMensual * 0.1137;
       } else if (emp.Pension === 'ONP') {
-        descuentoPension = emp.SueldoMensual * 0.13; // 13%
+        descuentoPension = emp.SueldoMensual * 0.13;
       }
     }
   
@@ -278,7 +275,8 @@ const AttendanceManagement: React.FC = () => {
           }
 
           const sueldoMensual = empleadoDB.salario || Number(row[4]) || 0;
-          const sueldoDiario = Number(row[5]) || (sueldoMensual / diasDelMes);          const descuentosAsistencia = (tardanzas * descuentoTardanza) + (faltas * sueldoDiario);
+          const sueldoDiario = Number(row[5]) || (sueldoMensual / diasDelMes);
+          const descuentosAsistencia = (tardanzas * descuentoTardanza) + (faltas * sueldoDiario);
           
           const empleado: Empleado = {
             Codigo: row[0]?.toString() || '',
@@ -297,15 +295,15 @@ const AttendanceManagement: React.FC = () => {
             ArchivoOrigen: nombreArchivo,
             NombreReporte: nombreReporte,
             Mes: mes,
-            TipoContrato: empleadoDB?.tipocontrato || defaultTipoPlanilla, // Usa el valor de la base de datos o el valor predeterminado
-            Pension: empleadoDB?.pension || (defaultTipoPlanilla === 'regular' ? defaultPension : null), // Usa el valor de la base de datos o asigna null si no aplica
+            TipoContrato: empleadoDB?.tipocontrato || defaultTipoPlanilla,
+            Pension: empleadoDB?.pension || (defaultTipoPlanilla === 'regular' ? defaultPension : null),
             BonoExtra: 0,
             Sede: empleadoDB?.sede ?? defaultSede,
             Empresa: empleadoDB.empresa || '',
             Rubro: empleadoDB.rubro || '',
             Banco: empleadoDB.banco || 'No especificado',
-            FechaInicio: empleadoDB?.fechaingreso || '', // Asegúrate de usar el valor de la base de datos
-            NumeroCuenta: empleadoDB?.numerocuenta || '', // Usar numerocuenta de Supabase
+            FechaInicio: empleadoDB?.fechaingreso || '',
+            NumeroCuenta: empleadoDB?.numerocuenta || '',
           };
 
           const { sueldoFinal } = calcularSueldoFinal(empleado);
@@ -398,6 +396,57 @@ const AttendanceManagement: React.FC = () => {
     }));
   };
 
+  const handleQuickAction = (codigo: string, estado: string) => {
+    if (!['PU', 'AS', 'TA', 'FA'].includes(estado)) return;
+    
+    setEmpleados(prev =>
+      prev.map(emp => {
+        if (emp.Codigo === codigo) {
+          const nuevosDias = { ...emp.Dias };
+          let cambiosRealizados = false;
+          
+          // Actualizar solo días con estados relevantes
+          Object.keys(nuevosDias).forEach(dia => {
+            if (['PU', 'AS', 'TA', 'FA'].includes(nuevosDias[dia])) {
+              nuevosDias[dia] = estado;
+              cambiosRealizados = true;
+            }
+          });
+  
+          if (!cambiosRealizados) return emp;
+  
+          // Recalcular contadores
+          let puntuales = 0;
+          let tardanzas = 0;
+          let faltas = 0;
+  
+          Object.values(nuevosDias).forEach(estadoDia => {
+            if (estadoDia === 'PU' || estadoDia === 'AS') puntuales++;
+            if (estadoDia === 'TA') tardanzas++;
+            if (estadoDia === 'FA') faltas++;
+          });
+  
+          const empleadoActualizado = {
+            ...emp,
+            Dias: nuevosDias,
+            Puntuales: puntuales,
+            Tardanzas: tardanzas,
+            Faltas: faltas
+          };
+  
+          const { sueldoFinal, descuentosAsistencia } = calcularSueldoFinal(empleadoActualizado);
+  
+          return {
+            ...empleadoActualizado,
+            Descuentos: descuentosAsistencia,
+            SueldoFinal: sueldoFinal,
+          };
+        }
+        return emp;
+      })
+    );
+  };
+
   const handleTipoPlanillaChange = (codigo: string, tipo: 'honorarios' | 'regular') => {
     setEmpleados(prev => prev.map(emp => {
       if (emp.Codigo === codigo) {
@@ -419,7 +468,6 @@ const AttendanceManagement: React.FC = () => {
   };
 
   const handlePensionChange = (codigo: string, pension: 'AFP Integra' | 'AFP Profuturo' | 'AFP Prima' | 'AFP Habitat' | 'ONP') => {
-    console.log(`Cambiando pensión para el empleado ${codigo} a ${pension}`);
     setEmpleados((prev) =>
       prev.map((emp) => {
         if (emp.Codigo === codigo && emp.TipoPlanilla === 'regular') {
@@ -465,10 +513,10 @@ const AttendanceManagement: React.FC = () => {
       const fecha = new Date();
       const fechaStr = fecha.toISOString().split('T')[0];
   
-      // ===================== HOJA RESUMEN =====================
+      // Hoja Resumen General
       const summarySheet = workbook.addWorksheet('Resumen General');
       
-      // Estilo profesional para headers
+      // Estilo para headers
       const headerStyle = {
         fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } },
         font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 },
@@ -526,7 +574,7 @@ const AttendanceManagement: React.FC = () => {
           (datosPorBanco[i]?.totalFinal || 0) + 
           (datosPorSede[i]?.totalFinal || 0)
         );
-  
+
         summarySheet.addRow(row);
       }
   
@@ -536,19 +584,19 @@ const AttendanceManagement: React.FC = () => {
         summarySheet.getColumn(col).width = 18;
       });
   
-      // ===================== HOJA RUBROS =====================
+      // Hoja Rubros
       const rubrosSheet = workbook.addWorksheet('Análisis por Rubro');
       addAnalisisSheet(rubrosSheet, datosPorRubro, 'Rubros');
   
-      // ===================== HOJA BANCOS =====================
+      // Hoja Bancos
       const bancosSheet = workbook.addWorksheet('Análisis por Banco');
       addAnalisisSheet(bancosSheet, datosPorBanco, 'Bancos');
   
-      // ===================== HOJA SEDES =====================
+      // Hoja Sedes
       const sedesSheet = workbook.addWorksheet('Análisis por Sede');
       addAnalisisSheet(sedesSheet, datosPorSede, 'Sedes');
   
-      // ===================== HOJA DETALLE =====================
+      // Hoja Detalle
       const detalleSheet = workbook.addWorksheet('Detalle Completo');
       
       // Configurar columnas
@@ -584,7 +632,7 @@ const AttendanceManagement: React.FC = () => {
         to: { row: 1, column: detalleSheet.columns.length }
       };
   
-      // ===================== GENERAR ARCHIVO =====================
+      // Generar archivo
       const buffer = await workbook.xlsx.writeBuffer();
       const nombreArchivo = `Reporte_Analitico_${fechaStr}.xlsx`;
       saveAs(new Blob([buffer]), nombreArchivo);
@@ -594,8 +642,7 @@ const AttendanceManagement: React.FC = () => {
       alert('Error al generar el archivo Excel. Verifica la consola para más detalles.');
     }
   };
-  
-  // Función auxiliar para hojas de análisis
+
   const addAnalisisSheet = (worksheet: ExcelJS.Worksheet, data: any[], title: string) => {
     // Título
     worksheet.mergeCells('A1:F1');
@@ -679,7 +726,6 @@ const AttendanceManagement: React.FC = () => {
     saveAs(new Blob([buffer]), 'Resumen_Sede_Banco.xlsx');
   };
 
-  // Filtrado de empleados
   const empleadosFiltrados = useMemo(() => {
     return empleados.filter(emp => {
       const matchesSearch = 
@@ -695,6 +741,7 @@ const AttendanceManagement: React.FC = () => {
       return matchesSearch && matchesReporte;
     });
   }, [empleados, searchTerm, filterReporte]);
+
   const datosPorBanco = useMemo(() => {
     const bancosMap = new Map<string, BancoSummary>();
     
@@ -728,7 +775,7 @@ const AttendanceManagement: React.FC = () => {
       b.totalFinal - a.totalFinal
     );
   }, [empleadosFiltrados]);
-  // Datos por rubro
+
   const datosPorRubro = useMemo(() => {
     const rubrosMap = new Map<string, RubroSummary>();
     
@@ -843,10 +890,6 @@ const AttendanceManagement: React.FC = () => {
     }));
   }, [empleadosFiltrados]);
 
-  // Datos por ocupación
-  // Removed unused 'datosPorOcupacion' variable
-
-  // Paginación
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = empleadosFiltrados.slice(indexOfFirstRecord, indexOfLastRecord);
@@ -854,7 +897,6 @@ const AttendanceManagement: React.FC = () => {
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-  // Datos por reporte
   const datosPorReporte = useMemo(() => {
     const reportesUnicos = Array.from(new Set(empleadosFiltrados.map(e => e.NombreReporte)));
     
@@ -877,9 +919,6 @@ const AttendanceManagement: React.FC = () => {
   }, [datosPorReporte, filterReporte]);
 
   const handleExport = () => {
-    // Asume que estos arrays/vars están en tu scope:
-    // empleados, empleadosFiltrados, diasDelMes, descuentoTardanza
-  
     const archivosOrigen = Array.from(new Set(empleados.map(e => e.ArchivoOrigen)));
     const reportes = Array.from(new Set(empleados.map(e => e.NombreReporte))).join(', ');
     const fechaExport = new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long' });
@@ -975,9 +1014,8 @@ const AttendanceManagement: React.FC = () => {
   
       const row = ws.addRow(data);
       
-      
       // Aplicar formato monetario a las columnas económicas
-      const formatMonetario = (colNumber) => {
+      const formatMonetario = (colNumber: number) => {
           const cell = row.getCell(colNumber);
           cell.numFmt = '"S/"#,##0.00';
           cell.alignment = { horizontal: 'right' };
@@ -1025,7 +1063,7 @@ const AttendanceManagement: React.FC = () => {
         { width: 10 },   // Pensión
         { width: 15 },   // Sueldo Mensual
         { width: 15 },   // Sueldo Diario
-        { width: 12 },   // Inicio Labores (nueva columna)
+                { width: 12 },   // Inicio Labores (nueva columna)
         ...Array(diasDelMes).fill({ width: 4 }), // Días del mes
         { width: 8 },    // Puntual
         { width: 8 },    // Tardanza
@@ -1116,24 +1154,22 @@ const AttendanceManagement: React.FC = () => {
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       saveAs(blob, `Resumen_Pagos_${new Date().toISOString().split('T')[0]}.xlsx`);
     });
-};
-  
-  // Función auxiliar para calcular descuentos de planilla
+  };
+
   const calcularDescuentoPlanilla = (emp: Empleado) => {
     if (!emp.Pension) return 'S/.0.00';
   
     const porcentajes = {
-      'AFP Integra': 0.0155,
-      'AFP Profuturo': 0.0169,
-      'AFP Prima': 0.0160,
-      'AFP Habitat': 0.0147,
+      'AFP Integra': 0.1137,
+      'AFP Profuturo': 0.1137,
+      'AFP Prima': 0.1137,
+      'AFP Habitat': 0.1137,
       'ONP': 0.13
     };
   
     const descuento = emp.SueldoMensual * (porcentajes[emp.Pension] || 0);
     return `S/.${descuento.toFixed(2)} (${emp.Pension})`;
   };
-  
 
   const leyendaEstados = [
     { codigo: 'PU', significado: 'Puntual', color: 'bg-green-100 text-green-800 border-green-200' },
@@ -1155,34 +1191,48 @@ const AttendanceManagement: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-xl hidden md:block border-r border-gray-100">        
-      <div className="p-4 flex items-center justify-center border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600">          
-        <div className="flex items-center gap-2">
-            <Calendar className="text-white-600" size={28} />
-            <h1 className="text-xl font-bold text-white">Dashbord Reportes</h1>          </div>
+      <div
+        className={`${
+          isSidebarOpen ? 'w-64' : 'w-16'
+        } bg-white shadow-xl hidden md:block border-r border-gray-100 transition-all duration-300`}
+      >
+        <div
+          className="p-4 flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600 cursor-pointer"
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        >
+          <div className="flex items-center gap-2">
+            <Calendar className="text-white" size={28} />
+            {isSidebarOpen && <h1 className="text-xl font-bold text-white">Menú</h1>}
+          </div>
+          <ArrowRight
+            className={`text-white transform transition-transform ${
+              isSidebarOpen ? 'rotate-180' : ''
+            }`}
+            size={20}
+          />
         </div>
         <nav className="p-4 space-y-1">
           <button
             onClick={() => setActiveTab('asistencias')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-              activeTab === 'asistencias' 
-                ? 'bg-blue-100 text-blue-600 shadow-inner' 
+              activeTab === 'asistencias'
+                ? 'bg-blue-100 text-blue-600 shadow-inner'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
             <Users size={20} />
-            <span>Asistencias</span>
+            {isSidebarOpen && <span>Asistencias</span>}
           </button>
           <button
             onClick={() => setActiveTab('reportes')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-              activeTab === 'reportes' 
-                ? 'bg-blue-100 text-blue-600 shadow-inner' 
+              activeTab === 'reportes'
+                ? 'bg-blue-100 text-blue-600 shadow-inner'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
             <ClipboardCheck size={20} />
-            <span>Reportes</span>
+            {isSidebarOpen && <span>Reportes</span>}
           </button>
         </nav>
       </div>
@@ -1190,62 +1240,47 @@ const AttendanceManagement: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-100">
-          <div className="px-6 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {activeTab === 'asistencias' ? 'Gestión de Asistencias' : 'Dashboard Analítico'}
-            </h2>
-            <div className="w-full md:w-auto flex items-center gap-4">
-              <div className="relative flex-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="text-gray-400" size={18} />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Buscar empleados..."
-                  className="pl-10 pr-4 py-2.5 w-full border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 transition-all"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+        <div className="px-0 py-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          {/* Elimina el título */}
+          <div className="w-full md:w-auto flex items-center gap-4 justify-end">
+            <div className="relative flex-1">
             </div>
           </div>
-        </header>
-
+        </div>
 
         {/* Content */}
         <main className="p-3 bg-gray-50">
-        {Object.keys(validationErrors).length > 0 && (
-  <div className="fixed right-6 top-6 z-50 w-80 bg-red-50 border-l-4 border-red-400 p-4 rounded-lg shadow-lg">
-    <div className="flex items-start">
-      <div className="flex-shrink-0">
-        <AlertCircle className="h-5 w-5 text-red-400" />
-      </div>
-      <div className="ml-3">
-        <h3 className="text-sm font-medium text-red-800">
-          Empleados no registrados o inactivos en la base de datos ({Object.keys(validationErrors).length})
-        </h3>
-        <div className="mt-2 text-sm text-red-700">
-          <ul className="list-disc pl-5 space-y-1 max-h-60 overflow-y-auto">
-            {Object.entries(validationErrors).map(([key, error]) => (
-              <li key={key} className="truncate">
-                <span className="font-medium">{key}</span>: {error}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="mt-2">
-          <button
-            onClick={() => setValidationErrors({})}
-            className="text-sm text-red-600 hover:text-red-800 font-medium"
-          >
-            Cerrar
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+          {Object.keys(validationErrors).length > 0 && (
+            <div className="fixed right-6 top-6 z-50 w-80 bg-red-50 border-l-4 border-red-400 p-4 rounded-lg shadow-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-5 w-5 text-red-400" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">
+                    Empleados no registrados o inactivos en la base de datos ({Object.keys(validationErrors).length})
+                  </h3>
+                  <div className="mt-2 text-sm text-red-700">
+                    <ul className="list-disc pl-5 space-y-1 max-h-60 overflow-y-auto">
+                      {Object.entries(validationErrors).map(([key, error]) => (
+                        <li key={key} className="truncate">
+                          <span className="font-medium">{key}</span>: {error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="mt-2">
+                    <button
+                      onClick={() => setValidationErrors({})}
+                      className="text-sm text-red-600 hover:text-red-800 font-medium"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {isValidating && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1263,16 +1298,7 @@ const AttendanceManagement: React.FC = () => {
 
           {activeTab === 'asistencias' ? (
             <>
-              {/* Panel de configuración */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6"> {/* Reducir a 3 columnas */}
-</div>
-
-{/* Agregar advertencia */}
-<div className="mt-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700">
-  <p>⚠️ El tipo de planilla y pensión ahora se obtienen desde la base de datos</p>
-</div>
-
-              {/* Panel de control */}
+              {/* Panel de control unificado */}
               <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8">
                 <div className="bg-gradient-to-r from-green-600 to-green-800 p-4 text-white">
                   <div className="flex flex-wrap justify-between items-center gap-4">
@@ -1305,153 +1331,176 @@ const AttendanceManagement: React.FC = () => {
                 </div>
 
                 <div className="p-6">
-                  <div className="flex flex-wrap justify-between gap-6 mb-6">
-                    <div className="flex-1 min-w-[300px] space-y-4">
-                      <div className="flex flex-wrap gap-4">
-                        <div className="relative flex-1 min-w-[200px]">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Filter className="text-gray-400" size={18} />
-                          </div>
-                          <select
-                            className="pl-10 pr-4 py-2.5 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                            value={filterReporte}
-                            onChange={(e) => setFilterReporte(e.target.value)}
-                          >
-                            {reportesDisponibles.map((reporte, index) => (
-                              <option key={index} value={reporte}>
-                                {reporte === 'TODOS' ? 'Todos los reportes' : reporte}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        
-                        <div className="flex-1 min-w-[200px]">
-                          <select
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={recordsPerPage}
-                            onChange={(e) => {
-                              setRecordsPerPage(Number(e.target.value));
-                              setCurrentPage(1);
-                            }}
-                          >
-                            <option value="5">5 registros/página</option>
-                            <option value="10">10 registros/página</option>
-                            <option value="20">20 registros/página</option>
-                            <option value="30">30 registros/página</option>
-                            <option value="50">50 registros/página</option>
-                          </select>
-                        </div>
-                      </div>
+                  {/* Panel expandido de Leyenda de estados con buscador y archivos */}
+                  <div className="bg-gray-50 rounded-lg border border-gray-200 mb-6">
+                    <div className="p-4 border-b border-gray-200">
+                      <h3 className="font-semibold flex items-center gap-2 text-blue-600">
+                        <ClipboardCheck size={20} />
+                        Control de Asistencias
+                      </h3>
                     </div>
-
-                    <div className="flex flex-col gap-2">
-                      <div className="flex flex-wrap gap-4">
-                        <input
-                          type="file"
-                          accept=".xlsx, .xls"
-                          onChange={handleImport}
-                          className="hidden"
-                          id="attendance-import"
-                          multiple
-                        />
-                        <label
-                          htmlFor="attendance-import"
-                          className={`${primaryButtonStyle} min-w-[100px]`}
-                        >
-                          <FileUp size={20} /> Importar Excel
-                        </label>
-                        <button
-                          onClick={handleExport}
-                          className={`${successButtonStyle} ${empleados.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          disabled={empleados.length === 0}
-                        >
-                          <FileDown size={20} /> Exportar Excel
-                        </button>
-                        
-                        <button
-                          onClick={handleExportReports}
-                          className={`${successButtonStyle} ${empleados.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          disabled={empleados.length === 0}
-                        >
-                          <FileDown size={20} /> Exportar Reportes
-                        </button>
-                          <button
-                            onClick={exportarSedeYBanco}
-                            className={`${successButtonStyle}`}
-                          >
-                            <FileDown size={20} /> Exportar Sede y Banco
-                          </button>
+                    
+                    <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Columna 1: Leyenda de estados */}
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">Leyenda de Estados</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {leyendaEstados.map((item) => (
+                            <div
+                              key={item.codigo}
+                              className={`px-2 py-1 rounded flex items-center gap-1 ${item.color} border text-xs`}
+                            >
+                              <span className="font-bold">{item.codigo}</span>
+                              <span>{item.significado}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
-                      {archivosCargados.length > 0 && (
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <div className="flex justify-between items-center mb-2">
-                            <h4 className="font-medium flex items-center gap-2 text-sm">
-                              <FileUp size={16} />
-                              Archivos cargados ({archivosCargados.length})
-                            </h4>
-                            <span className="text-xs text-gray-500">
-                              {empleados.length} registros
-                            </span>
-                          </div>
-                          <div className="max-h-40 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                            {archivosCargados.map((archivo, index) => {
-                              const nombreReporte = extraerNombreReporte(archivo);
-                              const reportIndex = reportesDisponibles.slice(1).indexOf(nombreReporte);
-                              const color = COLORS[reportIndex % COLORS.length];
-                              
-                              return (
-                                <div 
-                                  key={index} 
-                                  className="flex justify-between items-center py-1.5 px-2 hover:bg-gray-100 rounded text-xs"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <div 
-                                      className="w-3 h-3 rounded-full flex-shrink-0"
-                                      style={{ backgroundColor: color }}
-                                    />
-                                    <div className="truncate">
-                                      <p className="font-medium truncate">{archivo}</p>
-                                      <p className="text-gray-500 truncate text-xxs">Reporte: {nombreReporte}</p>
-                                    </div>
-                                  </div>
-                                  <button 
-                                    onClick={() => handleRemoveFile(archivo)}
-                                    className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 ml-2"
-                                    title="Eliminar archivo"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                              );
-                            })}
+                      {/* Columna 2: Buscador y filtros */}
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Buscar Empleado</h4>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <Search className="text-gray-400" size={18} />
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Nombre, DNI o código..."
+                              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition-all text-sm"
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                           </div>
                         </div>
-                      )}
+
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Filtrar por Reporte</h4>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <Filter className="text-gray-400" size={18} />
+                            </div>
+                            <select
+                              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white text-sm"
+                              value={filterReporte}
+                              onChange={(e) => setFilterReporte(e.target.value)}
+                            >
+                              {reportesDisponibles.map((reporte, index) => (
+                                <option key={index} value={reporte}>
+                                  {reporte === 'TODOS' ? 'Todos los reportes' : reporte}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Columna 3: Archivos cargados */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                            <FileUp size={16} />
+                            Archivos cargados
+                          </h4>
+                          <span className="text-xs text-gray-500">
+                            {archivosCargados.length} archivos · {empleados.length} registros
+                          </span>
+                        </div>
+                        <div className="max-h-40 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                          {archivosCargados.map((archivo, index) => {
+                            const nombreReporte = extraerNombreReporte(archivo);
+                            const reportIndex = reportesDisponibles.slice(1).indexOf(nombreReporte);
+                            const color = COLORS[reportIndex % COLORS.length];
+                            
+                            return (
+                              <div 
+                                key={index} 
+                                className="flex justify-between items-center py-1.5 px-2 hover:bg-gray-100 rounded text-xs mb-1"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div 
+                                    className="w-3 h-3 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: color }}
+                                  />
+                                  <div className="truncate">
+                                    <p className="font-medium truncate">{archivo}</p>
+                                    <p className="text-gray-500 truncate">Reporte: {nombreReporte}</p>
+                                  </div>
+                                </div>
+                                <button 
+                                  onClick={() => handleRemoveFile(archivo)}
+                                  className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50 ml-2"
+                                  title="Eliminar archivo"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                      <span className="text-blue-600">Leyenda de Estados</span>
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                      {leyendaEstados.map((item) => (
-                        <div 
-                          key={item.codigo} 
-                          className={`px-3 py-2 rounded-lg flex items-center gap-2 ${item.color} border`}
-                        >
-                          <span className="font-bold">{item.codigo}</span>
-                          <span className="text-sm">{item.significado}</span>
-                        </div>
-                      ))}
+                  {/* Controles de paginación y exportación */}
+                  <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Registros por página:</span>
+                      <select
+                        className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        value={recordsPerPage}
+                        onChange={(e) => {
+                          setRecordsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="50">50</option>
+                      </select>
                     </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <input
+                        type="file"
+                        accept=".xlsx, .xls"
+                        onChange={handleImport}
+                        className="hidden"
+                        id="attendance-import"
+                        multiple
+                      />
+                      <label
+                        htmlFor="attendance-import"
+                        className={`${primaryButtonStyle} text-sm min-w-[120px]`}
+                      >
+                        <FileUp size={18} /> Importar
+                      </label>
+                      <button
+                        onClick={handleExport}
+                        className={`${successButtonStyle} text-sm ${empleados.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={empleados.length === 0}
+                      >
+                        <FileDown size={18} /> Exportar
+                      </button>
+                      <button
+                        onClick={handleExportReports}
+                        className={`${successButtonStyle} text-sm ${empleados.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={empleados.length === 0}
+                      >
+                        <FileDown size={18} /> Reportes
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Advertencia */}
+                  <div className="p-3 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 text-sm rounded-lg">
+                    <p>⚠️ El tipo de planilla y pensión se obtienen desde la base de datos</p>
                   </div>
                 </div>
               </div>
-
-              
-              
 
               {empleadosFiltrados.length > 0 ? (
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
@@ -1495,26 +1544,42 @@ const AttendanceManagement: React.FC = () => {
                             <th className="p-3 text-center font-semibold text-gray-700 whitespace-nowrap min-w-[90px] bg-orange-50">Desctos.</th>
                             <th className="p-3 text-center font-semibold text-gray-700 whitespace-nowrap min-w-[100px] bg-blue-100">Total</th>
                             <th className="p-3 text-center font-semibold text-gray-700 whitespace-nowrap min-w-[120px] bg-gray-100">Reporte</th>
+                            <th className="p-3 text-center font-semibold text-gray-700 whitespace-nowrap min-w-[150px] bg-gray-100">
+      Acciones Rápidas
+    </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                           {currentRecords.map((emp, empIndex) => (
                             <tr 
                               key={`${emp.Codigo}-${empIndex}`} 
-                              className="group relative hover:bg-blue-50 even:bg-gray-50/30 transition-colors duration-150"
+                              className={`group relative hover:bg-blue-50 transition-colors duration-150 ${
+                                empIndex % 2 === 0 ? 'bg-white' : 'bg-blue-50'
+                              }`}
                             >
-                              <td className="sticky left-0 z-20 bg-white group-hover:bg-blue-50 p-3 font-mono text-left border-r border-gray-200">
-                                {emp.Codigo}
-                              </td>
+      <td
+        className={`sticky left-0 z-20 p-3 font-mono text-left border-r border-gray-200 ${
+          empIndex % 2 === 0 ? 'bg-white' : 'bg-blue-50'
+        } group-hover:bg-blue-50 transition-colors duration-150`}
+      >
+        {emp.Codigo}
+      </td>
+      <td 
+        className={`sticky left-20 z-20 p-3 border-r border-gray-200 ${
+          empIndex % 2 === 0 ? 'bg-white' : 'bg-blue-50'
+        } group-hover:bg-blue-50`}
+      >
+        <div className="font-medium">{emp.Nombre}</div>
+        <div className="text-gray-500 text-xs">{emp.Cargo}</div>
+      </td>
                               
-                              <td className="sticky left-20 z-20 bg-white group-hover:bg-blue-50 p-3 border-r border-gray-200">
-                                <div className="font-medium">{emp.Nombre}</div>
-                                <div className="text-gray-500 text-xs">{emp.Cargo}</div>
-                              </td>
-                              
-                              <td className="sticky left-48 z-20 bg-white group-hover:bg-blue-50 p-3 font-mono text-right border-r border-gray-200">
-                                {emp.Dni}
-                              </td>
+      <td 
+        className={`sticky left-48 z-20 p-3 font-mono text-right border-r border-gray-200 ${
+          empIndex % 2 === 0 ? 'bg-white' : 'bg-blue-50'
+        } group-hover:bg-blue-50`}
+      >
+        {emp.Dni}
+      </td>
 
                               <td className="p-3 font-mono text-right group-hover:bg-blue-50/50">
                                 S/.{emp.SueldoMensual.toFixed(2)}
@@ -1555,8 +1620,7 @@ const AttendanceManagement: React.FC = () => {
                                     <Plus size={16} />
                                   </button>
                                 </div>
-                              </td>
-                              
+                              </td>                    
                               {Array.from({length: diasDelMes}, (_, i) => {
                                 const estado = emp.Dias[`Dia${i + 1}`] || 'NL';
                                 const estadoConfig = leyendaEstados.find(e => e.codigo === estado);
@@ -1597,9 +1661,27 @@ const AttendanceManagement: React.FC = () => {
                                   {emp.NombreReporte}
                                 </span>
                               </td>
-                              
-                              <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-200 pointer-events-none" />
-                            </tr>
+                              <td className="p-3 text-center bg-gray-100 group-hover:bg-blue-50/50">
+        <div className="relative">
+          <select
+            className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-1 pr-8 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            onChange={(e) => handleQuickAction(emp.Codigo, e.target.value)}
+            value=""
+          >
+            <option value="" disabled hidden>Cambiar todos...</option>
+            <option value="PU">Puntual (PU)</option>
+            <option value="AS">Asistió (AS)</option>
+            <option value="TA">Tardanza (TA)</option>
+            <option value="FA">Falta (FA)</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+              <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+            </svg>
+          </div>
+        </div>
+      </td>
+      <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-200 pointer-events-none" />                            </tr>
                           ))}
                         </tbody>
                       </table>
@@ -1804,341 +1886,341 @@ const AttendanceManagement: React.FC = () => {
                 </div>
               </div>
 
-{/* Resumen por Banco con Gráfico Circular */}
-<div className="bg-white p-6 rounded-xl shadow-md">
-  <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-    <BarChart2 className="text-orange-500" size={20} />
-    Resumen por Banco
-  </h3>
-  
-  <div className="flex flex-col lg:flex-row gap-6">
-    {/* Gráfico Circular */}
-    <div className="lg:w-1/2 h-96">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={datosPorBanco}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={120}
-            fill="#FF8800"
-            dataKey="totalFinal"
-            nameKey="nombre"
-            label={({ nombre, percent }) => `${nombre}: ${(percent * 100).toFixed(0)}%`}
-          >
-            {datosPorBanco.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <Tooltip 
-            formatter={(value) => [`S/.${Number(value).toFixed(2)}`, 'Total']}
-          />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-    
-    {/* Datos de Bancos */}
-    <div className="lg:w-1/2">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {datosPorBanco.map((banco) => (
-          <div key={banco.nombre} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-            <div 
-              className="px-4 py-3 border-b border-gray-200 flex items-center justify-between"
-              style={{ backgroundColor: `${banco.color}20`, borderColor: banco.color }}
-            >
-              <h4 className="font-medium text-gray-800 flex items-center gap-2">
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: banco.color }}
-                />
-                <span className="truncate">{banco.nombre}</span>
-              </h4>
-              <span className="text-xs font-mono bg-white px-2 py-1 rounded">
-                {banco.cantidadEmpleados} {banco.cantidadEmpleados === 1 ? 'empleado' : 'empleados'}
-              </span>
-            </div>
-            
-            <div className="px-4 py-2 space-y-1">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Sueldos:</span>
-                <span className="font-mono text-green-600">
-                  S/.{banco.totalSueldos.toFixed(2)}
-                </span>
+              {/* Resumen por Banco con Gráfico Circular */}
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                  <BarChart2 className="text-orange-500" size={20} />
+                  Resumen por Banco
+                </h3>
+                
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Gráfico Circular */}
+                  <div className="lg:w-1/2 h-96">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={datosPorBanco}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={120}
+                          fill="#FF8800"
+                          dataKey="totalFinal"
+                          nameKey="nombre"
+                          label={({ nombre, percent }) => `${nombre}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {datosPorBanco.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [`S/.${Number(value).toFixed(2)}`, 'Total']}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Datos de Bancos */}
+                  <div className="lg:w-1/2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {datosPorBanco.map((banco) => (
+                        <div key={banco.nombre} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+                          <div 
+                            className="px-4 py-3 border-b border-gray-200 flex items-center justify-between"
+                            style={{ backgroundColor: `${banco.color}20`, borderColor: banco.color }}
+                          >
+                            <h4 className="font-medium text-gray-800 flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: banco.color }}
+                              />
+                              <span className="truncate">{banco.nombre}</span>
+                            </h4>
+                            <span className="text-xs font-mono bg-white px-2 py-1 rounded">
+                              {banco.cantidadEmpleados} {banco.cantidadEmpleados === 1 ? 'empleado' : 'empleados'}
+                            </span>
+                          </div>
+                          
+                          <div className="px-4 py-2 space-y-1">
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Sueldos:</span>
+                              <span className="font-mono text-green-600">
+                                S/.{banco.totalSueldos.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Descuentos:</span>
+                              <span className="font-mono text-red-500">
+                                S/.{banco.totalDescuentos.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Bonos:</span>
+                              <span className="font-mono text-blue-500">
+                                S/.{banco.totalBonos.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm font-medium pt-1 mt-1 border-t border-gray-100">
+                              <span className="text-gray-700">Total:</span>
+                              <span className="font-mono text-purple-600">
+                                S/.{banco.totalFinal.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-gray-700">Total General:</span>
+                        <span className="font-mono font-bold text-lg text-blue-600">
+                          S/.{datosPorBanco.reduce((sum, item) => sum + item.totalFinal, 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Descuentos:</span>
-                <span className="font-mono text-red-500">
-                  S/.{banco.totalDescuentos.toFixed(2)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Bonos:</span>
-                <span className="font-mono text-blue-500">
-                  S/.{banco.totalBonos.toFixed(2)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center text-sm font-medium pt-1 mt-1 border-t border-gray-100">
-                <span className="text-gray-700">Total:</span>
-                <span className="font-mono text-purple-600">
-                  S/.{banco.totalFinal.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-        <div className="flex justify-between items-center">
-          <span className="font-medium text-gray-700">Total General:</span>
-          <span className="font-mono font-bold text-lg text-blue-600">
-            S/.{datosPorBanco.reduce((sum, item) => sum + item.totalFinal, 0).toFixed(2)}
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
               {/* Resumen por Rubro con Gráfico Circular */}
-<div className="bg-white p-6 rounded-xl shadow-md">
-  <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-    <BarChart2 className="text-purple-500" size={20} />
-    Resumen por Rubro
-  </h3>
-  
-  <div className="flex flex-col lg:flex-row gap-6">
-    {/* Gráfico Circular */}
-    <div className="lg:w-1/2 h-96">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={datosPorRubro}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={120}
-            fill="#8884D8"
-            dataKey="totalFinal"
-            nameKey="nombre"
-            label={({ nombre, percent }) => `${nombre}: ${(percent * 100).toFixed(0)}%`}
-          >
-            {datosPorRubro.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <Tooltip 
-            formatter={(value) => [`S/.${Number(value).toFixed(2)}`, 'Total']}
-          />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-    
-    {/* Datos de Rubros */}
-    <div className="lg:w-1/2">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {datosPorRubro.map((rubro) => (
-          <div key={rubro.nombre} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-            <div 
-              className="px-4 py-3 border-b border-gray-200 flex items-center justify-between"
-              style={{ backgroundColor: `${rubro.color}20`, borderColor: rubro.color }}
-            >
-              <h4 className="font-medium text-gray-800 flex items-center gap-2">
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: rubro.color }}
-                />
-                <span className="truncate">{rubro.nombre}</span>
-              </h4>
-              <span className="text-xs font-mono bg-white px-2 py-1 rounded">
-                {rubro.cantidadEmpleados} {rubro.cantidadEmpleados === 1 ? 'empleado' : 'empleados'}
-              </span>
-            </div>
-            
-            <div className="px-4 py-2 space-y-1">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Sueldos:</span>
-                <span className="font-mono text-green-600">
-                  S/.{rubro.totalSueldos.toFixed(2)}
-                </span>
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                  <BarChart2 className="text-purple-500" size={20} />
+                  Resumen por Rubro
+                </h3>
+                
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Gráfico Circular */}
+                  <div className="lg:w-1/2 h-96">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={datosPorRubro}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={120}
+                          fill="#8884D8"
+                          dataKey="totalFinal"
+                          nameKey="nombre"
+                          label={({ nombre, percent }) => `${nombre}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {datosPorRubro.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [`S/.${Number(value).toFixed(2)}`, 'Total']}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Datos de Rubros */}
+                  <div className="lg:w-1/2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {datosPorRubro.map((rubro) => (
+                        <div key={rubro.nombre} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+                          <div 
+                            className="px-4 py-3 border-b border-gray-200 flex items-center justify-between"
+                            style={{ backgroundColor: `${rubro.color}20`, borderColor: rubro.color }}
+                          >
+                            <h4 className="font-medium text-gray-800 flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: rubro.color }}
+                              />
+                              <span className="truncate">{rubro.nombre}</span>
+                            </h4>
+                            <span className="text-xs font-mono bg-white px-2 py-1 rounded">
+                              {rubro.cantidadEmpleados} {rubro.cantidadEmpleados === 1 ? 'empleado' : 'empleados'}
+                            </span>
+                          </div>
+                          
+                          <div className="px-4 py-2 space-y-1">
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Sueldos:</span>
+                              <span className="font-mono text-green-600">
+                                S/.{rubro.totalSueldos.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Descuentos:</span>
+                              <span className="font-mono text-red-500">
+                                S/.{rubro.totalDescuentos.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Bonos:</span>
+                              <span className="font-mono text-blue-500">
+                                S/.{rubro.totalBonos.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm font-medium pt-1 mt-1 border-t border-gray-100">
+                              <span className="text-gray-700">Total:</span>
+                              <span className="font-mono text-purple-600">
+                                S/.{rubro.totalFinal.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-gray-700">Total General:</span>
+                        <span className="font-mono font-bold text-lg text-purple-600">
+                          S/.{datosPorRubro.reduce((sum, item) => sum + item.totalFinal, 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Descuentos:</span>
-                <span className="font-mono text-red-500">
-                  S/.{rubro.totalDescuentos.toFixed(2)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Bonos:</span>
-                <span className="font-mono text-blue-500">
-                  S/.{rubro.totalBonos.toFixed(2)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center text-sm font-medium pt-1 mt-1 border-t border-gray-100">
-                <span className="text-gray-700">Total:</span>
-                <span className="font-mono text-purple-600">
-                  S/.{rubro.totalFinal.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-        <div className="flex justify-between items-center">
-          <span className="font-medium text-gray-700">Total General:</span>
-          <span className="font-mono font-bold text-lg text-purple-600">
-            S/.{datosPorRubro.reduce((sum, item) => sum + item.totalFinal, 0).toFixed(2)}
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
-{/* Resumen por Sede */}
-<div className="bg-white p-6 rounded-xl shadow-md">
-  <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-    <BarChart2 className="text-teal-500" size={20} />
-    Resumen por Sede
-  </h3>
-  
-  <div className="flex flex-col lg:flex-row gap-6">
-    {/* Gráfico Circular */}
-    <div className="lg:w-1/2 h-96">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={datosPorSede}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            outerRadius={120}
-            fill="#00C49F"
-            dataKey="totalFinal"
-            nameKey="nombre"
-            label={({ nombre, percent }) => `${nombre}: ${(percent * 100).toFixed(0)}%`}
-          >
-            {datosPorSede.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <Tooltip 
-            formatter={(value) => [`S/.${Number(value).toFixed(2)}`, 'Total']}
-          />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-    
-    {/* Datos de Sedes */}
-    <div className="lg:w-1/2">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {datosPorSede.map((sede) => (
-          <div key={sede.nombre} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-            <div 
-              className="px-4 py-3 border-b border-gray-200 flex items-center justify-between"
-              style={{ backgroundColor: `${sede.color}20`, borderColor: sede.color }}
-            >
-              <h4 className="font-medium text-gray-800 flex items-center gap-2">
-                <div 
-                  className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: sede.color }}
-                />
-                <span className="truncate">{sede.nombre}</span>
-              </h4>
-              <span className="text-xs font-mono bg-white px-2 py-1 rounded">
-                {sede.cantidadEmpleados} {sede.cantidadEmpleados === 1 ? 'empleado' : 'empleados'}
-              </span>
-            </div>
-            
-            <div className="px-4 py-2 space-y-1">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Sueldos:</span>
-                <span className="font-mono text-green-600">
-                  S/.{sede.totalSueldos.toFixed(2)}
-                </span>
+              {/* Resumen por Sede */}
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                  <BarChart2 className="text-teal-500" size={20} />
+                  Resumen por Sede
+                </h3>
+                
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Gráfico Circular */}
+                  <div className="lg:w-1/2 h-96">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={datosPorSede}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={120}
+                          fill="#00C49F"
+                          dataKey="totalFinal"
+                          nameKey="nombre"
+                          label={({ nombre, percent }) => `${nombre}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {datosPorSede.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [`S/.${Number(value).toFixed(2)}`, 'Total']}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Datos de Sedes */}
+                  <div className="lg:w-1/2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {datosPorSede.map((sede) => (
+                        <div key={sede.nombre} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+                          <div 
+                            className="px-4 py-3 border-b border-gray-200 flex items-center justify-between"
+                            style={{ backgroundColor: `${sede.color}20`, borderColor: sede.color }}
+                          >
+                            <h4 className="font-medium text-gray-800 flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: sede.color }}
+                              />
+                              <span className="truncate">{sede.nombre}</span>
+                            </h4>
+                            <span className="text-xs font-mono bg-white px-2 py-1 rounded">
+                              {sede.cantidadEmpleados} {sede.cantidadEmpleados === 1 ? 'empleado' : 'empleados'}
+                            </span>
+                          </div>
+                          
+                          <div className="px-4 py-2 space-y-1">
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Sueldos:</span>
+                              <span className="font-mono text-green-600">
+                                S/.{sede.totalSueldos.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Descuentos:</span>
+                              <span className="font-mono text-red-500">
+                                S/.{sede.totalDescuentos.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-gray-600">Bonos:</span>
+                              <span className="font-mono text-blue-500">
+                                S/.{sede.totalBonos.toFixed(2)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-sm font-medium pt-1 mt-1 border-t border-gray-100">
+                              <span className="text-gray-700">Total:</span>
+                              <span className="font-mono text-teal-600">
+                                S/.{sede.totalFinal.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-gray-700">Total General:</span>
+                        <span className="font-mono font-bold text-lg text-teal-600">
+                          S/.{datosPorSede.reduce((sum, item) => sum + item.totalFinal, 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Descuentos:</span>
-                <span className="font-mono text-red-500">
-                  S/.{sede.totalDescuentos.toFixed(2)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Bonos:</span>
-                <span className="font-mono text-blue-500">
-                  S/.{sede.totalBonos.toFixed(2)}
-                </span>
-              </div>
-              
-              <div className="flex justify-between items-center text-sm font-medium pt-1 mt-1 border-t border-gray-100">
-                <span className="text-gray-700">Total:</span>
-                <span className="font-mono text-teal-600">
-                  S/.{sede.totalFinal.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-        <div className="flex justify-between items-center">
-          <span className="font-medium text-gray-700">Total General:</span>
-          <span className="font-mono font-bold text-lg text-teal-600">
-            S/.{datosPorSede.reduce((sum, item) => sum + item.totalFinal, 0).toFixed(2)}
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
-{/* Resumen por Sede y Banco */}
-<div className="bg-white p-6 rounded-xl shadow-md">
-  <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-    <BarChart2 className="text-blue-500" size={20} />
-    Resumen por Sede y Banco
-  </h3>
-  <div className="space-y-6">
-    {datosPorSedeYBanco.map(({ sede, bancos }) => (
-      <div key={sede} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <h4 className="text-md font-medium text-gray-700 mb-3">{sede}</h4>
-        <table className="w-full text-sm border-collapse border border-gray-200">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="px-4 py-2 border border-gray-200 text-left">Banco</th>
-              <th className="px-4 py-2 border border-gray-200 text-right">Total</th>
-              <th className="px-4 py-2 border border-gray-200 text-right">Porcentaje</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bancos.map(({ banco, total, porcentaje }) => (
-              <tr key={banco}>
-                <td className="px-4 py-2 border border-gray-200">{banco}</td>
-                <td className="px-4 py-2 border border-gray-200 text-right">S/.{total.toFixed(2)}</td>
-                <td className="px-4 py-2 border border-gray-200 text-right">{porcentaje.toFixed(2)}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    ))}
-  </div>
-</div>
+              {/* Resumen por Sede y Banco */}
+              <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                  <BarChart2 className="text-blue-500" size={20} />
+                  Resumen por Sede y Banco
+                </h3>
+                <div className="space-y-6">
+                  {datosPorSedeYBanco.map(({ sede, bancos }) => (
+                    <div key={sede} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <h4 className="text-md font-medium text-gray-700 mb-3">{sede}</h4>
+                      <table className="w-full text-sm border-collapse border border-gray-200">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="px-4 py-2 border border-gray-200 text-left">Banco</th>
+                            <th className="px-4 py-2 border border-gray-200 text-right">Total</th>
+                            <th className="px-4 py-2 border border-gray-200 text-right">Porcentaje</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bancos.map(({ banco, total, porcentaje }) => (
+                            <tr key={banco}>
+                              <td className="px-4 py-2 border border-gray-200">{banco}</td>
+                              <td className="px-4 py-2 border border-gray-200 text-right">S/.{total.toFixed(2)}</td>
+                              <td className="px-4 py-2 border border-gray-200 text-right">{porcentaje.toFixed(2)}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* Opcional: Mostrar por reporte si hay más de uno */}
               {filterReporte === 'TODOS' && datosPorReporte.length > 1 && (
